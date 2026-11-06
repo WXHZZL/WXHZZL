@@ -77,22 +77,38 @@ endpoint 或密钥写进会提交的文件（HTTP 鉴权用 `${环境变量}` �
 
 ## 快速开始
 
-需要 Python 3.10+。仓库根提供了 `setup.ps1`，一条命令建好 **D 盘**虚拟环境并跑通测试
-（不往 C 盘装任何东西，pip 缓存也指到 `D:\work\.cache`）：
+需要 Python 3.10+。**在本目录里直接用 `py`** 是最省事的起步方式：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup.ps1
+cd D:\work\Agent\FYAgent
+py main.py                  # 直接进入 TUI（config.ini 已配好 DeepSeek 即可用）
+py -m pytest tests -q       # 跑 324 个用例
 ```
 
-或者手动：
+`py` 会挑系统里最新的 Python（本机是 3.14）。若提示 `ModuleNotFoundError`，说明依赖
+还没装进那个解释器，二选一：
 
-```bash
-pip install -r Agent/FYAgent/requirements.txt
-python Agent\FYAgent\main.py            # 或者：python -m tui、双击 Agent\FYAgent\启动.bat
-python main.py --workspace F:\your\project    # 启动时指定工作区（默认本项目目录）
-python main.py --skills-dir D:\my-skills      # 额外技能根目录（可重复）
-python main.py --plugins-dir E:\team-plugins  # 额外插件根目录（可重复，FYAgent 新增）
+```powershell
+# A. 装进当前解释器
+py -m pip install -r requirements.txt
+
+# B. 用仓库自带的 D 盘虚拟环境（不写 C 盘；启动.bat 与 setup.ps1 都优先用它）
+powershell -ExecutionPolicy Bypass -File ..\..\setup.ps1
+..\..\.venv\Scripts\py -m pytest tests -q
 ```
+
+也可以从任意目录用绝对路径启动（`main.py` 会自己把包目录插进 `sys.path`，
+路径锚点在仓库根，与启动目录无关）：
+
+```powershell
+py D:\work\Agent\FYAgent\main.py
+D:\work\.venv\Scripts\fy.exe --workspace F:\your\project   # 装了虚拟环境后的命令入口
+py Agent\FYAgent\main.py --skills-dir D:\my-skills          # 额外技能根目录（可重复）
+py Agent\FYAgent\main.py --plugins-dir E:\team-plugins      # 额外插件根目录（可重复）
+```
+
+双击 [`启动.bat`](启动.bat) 是同一件事的图形化入口：它优先用仓库根的
+`..\..\.venv\Scripts\python.exe`，没有虚拟环境时退回 `python`。
 
 `main.py` 会从自身位置反推包根与仓库根，因此**从任何目录用绝对路径启动都能正常运行**；
 `.agents/`、`plugins/`、`config.ini` 一律锚定在仓库根 / 包目录，不受启动目录影响。

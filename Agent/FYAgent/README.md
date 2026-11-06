@@ -92,10 +92,14 @@ py -m pytest tests -q       # 跑 324 个用例
 # A. 装进当前解释器
 py -m pip install -r requirements.txt
 
-# B. 用仓库自带的 D 盘虚拟环境（不写 C 盘；启动.bat 与 setup.ps1 都优先用它）
+# B. 建一个仓库本地的 D 盘虚拟环境（setup.ps1：建 .venv + 装依赖 + 跑测试 + 备配置）
 powershell -ExecutionPolicy Bypass -File ..\..\setup.ps1
-..\..\.venv\Scripts\python.exe -m pytest tests -q
+# 建好之后 .venv 就在仓库根，启动.bat 会自动优先用它
 ```
+
+> 仓库里**不附带** `.venv`：它属于本机运行产物（`.gitignore` 已忽略，161 MB）。
+> 本机系统 Python 3.13 / 3.14 都已装齐依赖，所以不建虚拟环境也能直接跑；
+> 换到新机器时再执行一次 setup.ps1 即可。
 
 也可以从任意目录用绝对路径启动（`main.py` 会自己把包目录插进 `sys.path`，
 路径锚点在仓库根，与启动目录无关）：
@@ -106,8 +110,9 @@ py Agent\FYAgent\main.py --skills-dir D:\my-skills       # 额外技能根目录
 py Agent\FYAgent\main.py --plugins-dir E:\team-plugins   # 额外插件根目录（可重复）
 ```
 
-双击 [`启动.bat`](启动.bat) 是同一件事的图形化入口：它优先用仓库根的
-`..\..\.venv\Scripts\python.exe`，没有虚拟环境时退回 `python`。
+双击 [`启动.bat`](启动.bat) 是同一件事的图形化入口：优先用仓库根的
+`..\..\.venv\Scripts\python.exe`，**没有 `.venv` 时自动退回 `python`**（本机当前就走这条
+回退路径，实测可用；`python` 是 3.13，依赖同样齐全）。
 
 `main.py` 会从自身位置反推包根与仓库根，因此**从任何目录用绝对路径启动都能正常运行**；
 `.agents/`、`plugins/`、`config.ini` 一律锚定在仓库根 / 包目录，不受启动目录影响。
@@ -800,7 +805,7 @@ pytest tests -q          # 当前 324 个用例，约 55 秒（全程不联网�
 | 四 · 文档 | 全部 README 更新到新命名与新能力；新增 `plugins/README.md` 与 `config.example.ini`（9 段全注释，由代码模板生成，永不与代码脱节） | 各 README、`config.example.ini` |
 | 五 · Git | 初始化仓库、补 `.gitignore`、关联远程、首个提交 | `.gitignore` |
 | 六 · 差异 | 测试从 243 增至 324 例；core 新增 `plugins.py` / `probe.py`，tui 新增 `themes.py`；按「只算实质内容改动」的口径，FYAgent 的文件有 45.8% 与原版不同（全仓库含改名口径 41.7%） | `tests/` |
-| 七 · 可运行 | `D:\work\.venv`（D 盘，不写 C 盘）+ `config.ini` 配 DeepSeek（`deepseek-chat`），真实 API 端到端跑通并成功调用插件工具；`config.ini` 不入库 | `.venv/`、`config.ini`、`setup.ps1` |
+| 七 · 可运行 | `config.ini` 配 DeepSeek（`deepseek-chat`），本机系统 Python 3.13 / 3.14 依赖齐全，`cd Agent\FYAgent` + `py main.py` 直接可用；换机器用 `setup.ps1` 一键建 D 盘 `.venv` 并自测。真实 API 端到端跑通并成功调用插件工具；`config.ini` 不入库 | `config.ini`、`config.example.ini`、`启动.bat`、`setup.ps1` |
 | 八 · 第一性原理 | 能力边界由「注册表」而非代码决定：内置 / 插件 / MCP 三类工具统一进 `ToolRegistry`；界面偏好与路径各自集中到唯一来源（`[ui]` 段、`core/paths.py`），不依赖启动目录 | `core/tools/spec.py`、`core/plugins.py`、`core/config.py` |
 
 顺带修掉两个原有小问题：`core/skills.py` 里两处反引号转义引发的 `SyntaxWarning`；

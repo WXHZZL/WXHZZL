@@ -665,9 +665,18 @@ FYAgent 新增三条按「轮」操作历史的命令：
 
 - 段或键缺失 → 用默认值；空值 → 用默认值；类型不对 → `AgentError`（`CONFIG_INVALID`），
   错误信息带 `[段] 键名`；
-- 命令行参数（`--workspace`、`--skills-dir`）优先于配置文件；
+- 命令行参数（`--workspace`、`--skills-dir`、`--plugins-dir`）优先于配置文件；
 - 新增配置只改 `AppConfig` 的字段，并在 `render_config_template()` 里补一行注释示例，
   业务代码不用动。
+
+两种写入方式的区别（FYAgent）：
+
+- `save()`（`/config` 保存模型三项、`/model` 换模型）走 configparser 整体重写，
+  **原有注释会丢**——文件顶部会写明这一点；
+- `save_ui_theme()`（`/theme` 与 `Ctrl+T`）**按行原地改**：只替换 `[ui]` 段的 `theme`
+  那一行，没有该段就在末尾补一段，没有该键就在段内插一行。切主题是高频动作，
+  不该顺手把用户写好的注释全洗掉。`tests/test_config.py` 用「注释清单逐行相等」
+  把这条约束钉住了。
 
 `render_config_template()` 生成完整模板；首次启动缺 `config.ini` 时由
 `tui/screens/first_run_screen.py` 弹提示（文件已生成、改完 mock 值后重新启动），随后程序
@@ -705,7 +714,7 @@ MCP 连接涉及网络和子进程，同步等待会卡住首屏。`McpHub.start
 
 ```bash
 pip install -r requirements.txt   # 运行依赖与测试依赖都在这一份里
-pytest tests -q          # 当前 314 个用例，约 55 秒（全程不联网）
+pytest tests -q          # 当前 324 个用例，约 55 秒（全程不联网）
 ```
 
 - 网络完全用 `tests/support.py` 里的 `FakeBackend` 脚本化替身，不发起真实请求；
@@ -775,7 +784,7 @@ pytest tests -q          # 当前 314 个用例，约 55 秒（全程不联网�
 | 三 · 路径修复 | 引入 `PROJECT_ROOT`，路径不再由 `Path.cwd()` 反推；`main.py` 自动注入 `sys.path`，**任意目录用绝对路径启动都能运行**；插件 / 技能 / 归档 / 会话根全部锚定仓库根 | `core/paths.py`、`core/factory.py`、`main.py`、`启动.bat`、`setup.ps1` |
 | 四 · 文档 | 全部 README 更新到新命名与新能力；新增 `plugins/README.md` 与 `config.example.ini`（9 段全注释，由代码模板生成，永不与代码脱节） | 各 README、`config.example.ini` |
 | 五 · Git | 初始化仓库、补 `.gitignore`、关联远程、首个提交 | `.gitignore` |
-| 六 · 差异 | 测试从 243 增至 314 例；core 新增 `plugins.py` / `probe.py`，tui 新增 `themes.py`；按「只算实质内容改动」的口径，FYAgent 的文件有 41.8% 与原版不同 | `tests/` |
+| 六 · 差异 | 测试从 243 增至 324 例；core 新增 `plugins.py` / `probe.py`，tui 新增 `themes.py`；按「只算实质内容改动」的口径，FYAgent 的文件有 45.8% 与原版不同（全仓库含改名口径 41.7%） | `tests/` |
 | 七 · 可运行 | `D:\work\.venv`（D 盘，不写 C 盘）+ `config.ini` 配 DeepSeek（`deepseek-chat`），真实 API 端到端跑通并成功调用插件工具；`config.ini` 不入库 | `.venv/`、`config.ini`、`setup.ps1` |
 | 八 · 第一性原理 | 能力边界由「注册表」而非代码决定：内置 / 插件 / MCP 三类工具统一进 `ToolRegistry`；界面偏好与路径各自集中到唯一来源（`[ui]` 段、`core/paths.py`），不依赖启动目录 | `core/tools/spec.py`、`core/plugins.py`、`core/config.py` |
 

@@ -12,6 +12,7 @@ core.constants：文件里没写的键自动用默认值，因此老配置文件
 from __future__ import annotations
 
 import configparser
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -348,19 +349,47 @@ class ConfigStore:
         return self.load()
 
     def save_ui_theme(self, theme: str) -> AppConfig:
-        """只写 [ui] theme（/theme 切换后持久化），其余键原样保留。"""
+        """只写 [ui] theme（/theme 与 Ctrl+T 切换后持久化）。
+
+        这里刻意**不走 configparser 整体重写**：那会把用户写好的注释全洗掉，
+        而切主题是个高频动作，不该顺手毁掉整份配置文件。做法是按行定位：
+        有 `[ui]` 段且有 `theme` 键 → 原地替换那一行；有段无键 → 段尾插一行；
+        两段都没有 → 文件末尾追加一段。除此之外一个字节都不动。
+        """
         name = (theme or "").strip()
         if not name:
             raise ConfigError(ErrorCode.CONFIG_INVALID, "主题名不能为空")
-        parser = self._read_parser()
-        if not parser.has_section(UI_SECTION):
-            parser.add_section(UI_SECTION)
-        parser.set(UI_SECTION, UI_THEME_KEY, name)
+        if not self._path.is_file():
+            # 没有配置文件时没什么注释要保，直接落一份完整模板再改那一行
+            self.ensure_template()
+
+        lines = self._path.read_text(encoding="utf-8").splitlines()
+        ui_index = _section_index(lines, UI_SECTION)
+        if ui_index is None:
+            # 追加一段：与模板一致的注释 + 键
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.extend([
+                "[%s]" % UI_SECTION,
+                "# 主题（FYAgent 新增）：Textual 内置主题名，/theme 也可随时切换并写回这里",
+                "%s = %s" % (UI_THEME_KEY, name),
+            ])
+        else:
+            replaced = False
+            bound = _section_end(lines, ui_index)
+            for position in range(ui_index, bound):
+                stripped = lines[position].strip()
+                if stripped.startswith("%s " % UI_THEME_KEY) or stripped.startswith(
+                    "%s=" % UI_THEME_KEY
+                ):
+                    lines[position] = "%s = %s" % (UI_THEME_KEY, name)
+                    replaced = True
+                    break
+            if not replaced:
+                lines.insert(bound, "%s = %s" % (UI_THEME_KEY, name))
+
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            with self._path.open("w", encoding="utf-8") as handle:
-                handle.write("# FYAgent 配置（程序保存；原有注释会丢）\n")
-                parser.write(handle)
+            self._path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         except OSError as exc:
             raise ConfigError(
                 ErrorCode.CONFIG_INVALID, "无法写入配置文件：%s" % exc
@@ -415,7 +444,7 @@ def render_config_template() -> str:
         "compact_target_tokens = %d" % COMPACT_TARGET_TOKENS,
         "compact_max_tokens = %d" % COMPACT_MAX_TOKENS,
         "compact_timeout = %g" % COMPACT_TIMEOUT,
-        "# 压缩前原始上下文的归档目录（相对项目根）",
+        "# 压缩前原始上下文的归档目录（相对仓库根）",
         "archive_dir = %s" % CONTEXT_ARCHIVE_DIR,
         "# recallContext 单次检索返回的片段数与总字符上限",
         "recall_max_snippets = 6",
@@ -455,7 +484,7 @@ def render_config_template() -> str:
         "max_output = %d" % MCP_MAX_OUTPUT,
         "",
         "[skills]",
-        "# 技能扫描根目录（分号分隔）；留空 = <启动目录>/.agents/skills",
+        "# 技能扫描根目录（分号分隔）；留空 = <仓库根>/.agents/skills",
         "roots =",
         "",
         "[plugins]",
@@ -564,3 +593,26 @@ def _ratio(
             ErrorCode.CONFIG_INVALID, "配置项“%s”必须在 0 到 1 之间" % key
         )
     return value
+
+
+# -------------------------------------------------- 按行定位（保注释写入用）
+
+_SECTION_LINE = re.compile(r"^\s*\[([^\]]+)\]")
+
+
+def _section_index(lines: list[str], section: str) -> int | None:
+    """找 `[section]` 那一行的行号；没有时 None（大小写按 configparser 惯例）。"""
+    wanted = section.lower()
+    for index, line in enumerate(lines):
+        match = _SECTION_LINE.match(line)
+        if match and match.group(1).strip().lower() == wanted:
+            return index
+    return None
+
+
+def _section_end(lines: list[str], start: int) -> int:
+    """返回该段的结束位置（下一个段头的行号，或文件末尾）。"""
+    for index in range(start + 1, len(lines)):
+        if _SECTION_LINE.match(lines[index]):
+            return index
+    return len(lines)

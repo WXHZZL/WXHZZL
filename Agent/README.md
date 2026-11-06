@@ -42,7 +42,7 @@ python Agent\FYAgent\main.py
 | 界面 | 终端逐行打印 + 转圈动画 | Textual 全屏 TUI：消息卡片、工具卡片、配置页 |
 | 依赖方向 | — | 严格 `tui → core`，core 不依赖任何 UI 库 |
 | 装配方式 | 模块级全局 | `core/factory.py` 注入 backend / registry / 沙箱根 |
-| 测试 | 手工验证 | `tests/` 覆盖 core 与 TUI（pytest，无头模式，314 个用例，全程不联网） |
+| 测试 | 手工验证 | `tests/` 覆盖 core 与 TUI（pytest，无头模式，324 个用例，全程不联网） |
 | 工具 | 13 个 | 19 个内置：在旧版基础上增加 `searchWeb`（联网搜索）、`fetchWeb`（抓网页正文）、`RunCli`（本地命令行）、`loadSkill` / `createSkill`（技能加载与创建）、`recallContext`（回查上下文归档）；接入插件或 MCP Server 时再动态追加 |
 | 插件 | 无 | 仓库根 `plugins/` 目录：`FYPLUGIN.json` + `tools.py`，`register(api)` 即可加工具与提示片段；装载隔离、内置优先、可开关（FYAgent 新增） |
 | 技能 | 无 | Agent Skills：扫描技能目录、清单进 System Prompt、正文按需加载，还能让模型用 `createSkill` 现建 |

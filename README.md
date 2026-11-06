@@ -638,7 +638,7 @@ Markdown 导出），AGENTS.md 一次注入与恢复，`/new` `/save` `/resume` 
 FYAgent 新增 `test_plugins.py`（清单 / 扫描 / 装载隔离 / 挂载 / 配置往返）、
 `test_fy_ui.py`（`/plugins` `/theme`、三段边栏、`Ctrl+T/K/B`、时间戳）与
 `test_fy_turn.py`（`/undo` 三方一致回滚、`/retry`、`/copy`、`↑↓` 翻阅、连通性探测与配置页测试按钮），
-当前 314 个用例。
+当前 324 个用例。
 
 跑测试先装：`pip install pytest pytest-asyncio`（或 `pip install -r Agent\FYAgent\requirements.txt` 一次装齐）。
 

@@ -94,7 +94,7 @@ py -m pip install -r requirements.txt
 
 # B. 用仓库自带的 D 盘虚拟环境（不写 C 盘；启动.bat 与 setup.ps1 都优先用它）
 powershell -ExecutionPolicy Bypass -File ..\..\setup.ps1
-..\..\.venv\Scripts\py -m pytest tests -q
+..\..\.venv\Scripts\python.exe -m pytest tests -q
 ```
 
 也可以从任意目录用绝对路径启动（`main.py` 会自己把包目录插进 `sys.path`，
@@ -102,9 +102,8 @@ powershell -ExecutionPolicy Bypass -File ..\..\setup.ps1
 
 ```powershell
 py D:\work\Agent\FYAgent\main.py
-D:\work\.venv\Scripts\fy.exe --workspace F:\your\project   # 装了虚拟环境后的命令入口
-py Agent\FYAgent\main.py --skills-dir D:\my-skills          # 额外技能根目录（可重复）
-py Agent\FYAgent\main.py --plugins-dir E:\team-plugins      # 额外插件根目录（可重复）
+py Agent\FYAgent\main.py --skills-dir D:\my-skills       # 额外技能根目录（可重复）
+py Agent\FYAgent\main.py --plugins-dir E:\team-plugins   # 额外插件根目录（可重复）
 ```
 
 双击 [`启动.bat`](启动.bat) 是同一件事的图形化入口：它优先用仓库根的

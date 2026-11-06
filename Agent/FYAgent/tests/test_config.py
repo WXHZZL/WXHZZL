@@ -1,0 +1,203 @@
+"""config.ini 读写测试。"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from core.config import ConfigStore
+from core.constants import HISTORY_TURNS, MAX_TOOL_ROUNDS
+from core.errors import ConfigError, ErrorCode
+
+
+def test_load_missing_file_raises(tmp_path: Path) -> None:
+    store = ConfigStore(tmp_path / "absent.ini")
+    assert store.exists() is False
+    with pytest.raises(ConfigError) as excinfo:
+        store.load()
+    assert excinfo.value.code is ErrorCode.CONFIG_MISSING
+
+
+def test_save_then_load_roundtrip(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    store = ConfigStore(path)
+    saved = store.save(" http://example.test/v1 ", " secret ", " model ")
+
+    assert saved.base_url == "http://example.test/v1"
+    assert saved.api_key == "secret"
+    assert saved.model_name == "model"
+    assert store.exists() is True
+    assert store.load() == saved
+
+    text = path.read_text(encoding="utf-8")
+    assert "[llm]" in text
+    assert "base_url = http://example.test/v1" in text
+
+
+def test_save_rejects_blank_values(tmp_path: Path) -> None:
+    store = ConfigStore(tmp_path / "config.ini")
+    with pytest.raises(ConfigError) as excinfo:
+        store.save("http://example.test/v1", "  ", "model")
+    assert excinfo.value.code is ErrorCode.CONFIG_INVALID
+    assert "API 密钥" in excinfo.value.detail
+
+
+def test_load_rejects_missing_section(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text("[other]\nkey = value\n", encoding="utf-8")
+    store = ConfigStore(path)
+    assert store.exists() is False
+    with pytest.raises(ConfigError) as excinfo:
+        store.load()
+    assert excinfo.value.code is ErrorCode.CONFIG_INVALID
+
+
+def test_load_rejects_empty_required_key(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key =\nmodel_name = m\n", encoding="utf-8"
+    )
+    with pytest.raises(ConfigError) as excinfo:
+        ConfigStore(path).load()
+    assert "API 密钥" in excinfo.value.detail
+
+
+def test_load_reads_optional_search_section(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n"
+        "[search]\nbaidu_qianfan_api_key = bce-key\n"
+        "endpoint = https://example.test/search\n",
+        encoding="utf-8",
+    )
+
+    config = ConfigStore(path).load()
+
+    assert config.search_api_key == "bce-key"
+    assert config.search_endpoint == "https://example.test/search"
+
+
+def test_load_without_search_section_uses_default_endpoint(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n", encoding="utf-8"
+    )
+
+    config = ConfigStore(path).load()
+
+    assert config.search_api_key == ""
+    assert config.search_endpoint.startswith("https://qianfan.baidubce.com/")
+
+
+def test_load_reads_optional_tool_rounds(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n"
+        "max_tool_rounds = 7\nhistory_turns = 4\n",
+        encoding="utf-8",
+    )
+
+    config = ConfigStore(path).load()
+
+    assert config.max_tool_rounds == 7
+    assert config.history_turns == 4
+
+
+def test_load_defaults_tool_rounds_when_absent(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n", encoding="utf-8"
+    )
+
+    config = ConfigStore(path).load()
+
+    assert config.max_tool_rounds == MAX_TOOL_ROUNDS
+    assert config.history_turns == HISTORY_TURNS
+
+
+def test_save_preserves_optional_tool_rounds(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://old\napi_key = old\nmodel_name = old\n"
+        "max_tool_rounds = 9\n",
+        encoding="utf-8",
+    )
+    store = ConfigStore(path)
+
+    saved = store.save("http://example.test/v1", "secret", "model")
+
+    assert saved.max_tool_rounds == 9
+    assert store.load().max_tool_rounds == 9
+
+
+def test_load_rejects_non_numeric_tool_rounds(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n"
+        "max_tool_rounds = many\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        ConfigStore(path).load()
+    assert "max_tool_rounds" in excinfo.value.detail
+
+
+def test_save_preserves_search_section(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://old\napi_key = old\nmodel_name = old\n"
+        "[search]\nbaidu_qianfan_api_key = keep-me\n",
+        encoding="utf-8",
+    )
+    store = ConfigStore(path)
+
+    saved = store.save("http://example.test/v1", "secret", "model")
+
+    assert saved.search_api_key == "keep-me"
+    reloaded = store.load()
+    assert reloaded.search_api_key == "keep-me"
+    assert reloaded.base_url == "http://example.test/v1"
+
+
+def test_load_reads_skill_roots(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n"
+        "[skills]\n"
+        "; 分号分隔多个根，%TEMP% 这类写法不能被当成插值\n"
+        "roots = D:\\skills ; %TEMP%\\skills\n",
+        encoding="utf-8",
+    )
+
+    config = ConfigStore(path).load()
+
+    assert config.skill_roots == ("D:\\skills", "%TEMP%\\skills")
+
+
+def test_save_preserves_skill_roots(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://old\napi_key = old\nmodel_name = old\n"
+        "[skills]\nroots = relative/skills\n",
+        encoding="utf-8",
+    )
+    store = ConfigStore(path)
+
+    saved = store.save("http://example.test/v1", "secret", "model")
+
+    assert saved.skill_roots == ("relative/skills",)
+    text = path.read_text(encoding="utf-8")
+    assert "[skills]" in text
+    assert "relative/skills" in text
+    assert store.load().skill_roots == ("relative/skills",)
+
+
+def test_config_without_skills_section_has_no_roots(tmp_path: Path) -> None:
+    path = tmp_path / "config.ini"
+    path.write_text(
+        "[llm]\nbase_url = http://x\napi_key = k\nmodel_name = m\n",
+        encoding="utf-8",
+    )
+    assert ConfigStore(path).load().skill_roots == ()

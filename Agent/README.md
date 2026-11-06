@@ -1,0 +1,96 @@
+# Agent — 命令行对话练习与分层智能体
+
+基于 OpenAI 兼容接口的三代实现：从单文件 CLI，到带本地文件工具的 CLI，再到
+core/TUI 分层重构。三者共用流式输出、多轮上下文和本地历史存档方式，工具能力与
+界面形态不同。
+
+## 目录
+
+| 目录 | 能力 | 文档 |
+|------|------|------|
+| `Practice01/` | 多轮对话、流式输出、日期与闰年工具 | [Practice01/README.md](Practice01/README.md) |
+| `Practice02/` | 在 Practice01 基础上增加 10 个本地文件操作工具 | [Practice02/README.md](Practice02/README.md) |
+| `FYAgent/` | Practice02 的分层重写：`core` + Textual TUI，19 个内置工具 + 插件/MCP 动态工具、Agent Skills、插件系统（`plugins/`）、上下文压缩与历史检索、会话日志与 `/resume`、全量 `config.ini`、`/` 命令补全、主题与边栏 | [FYAgent/README.md](FYAgent/README.md) |
+
+## 启动
+
+从仓库根目录运行：
+
+```powershell
+python Agent\Practice01\main.py
+python Agent\Practice02\main.py
+python Agent\FYAgent\main.py
+```
+
+- Practice01 / Practice02：输入 `/exit` 退出
+- FYAgent：`/exit` 或 `Ctrl+Q` 退出，`Ctrl+C` 中断当前回复；输入 `/` 弹出命令候选
+  （↑↓ 选择、Tab 补全、Enter 执行）；上下文接近窗口上限时用 `/compact` 压缩；
+  `/new` 换新会话、`/resume` 从历史列表恢复（↑↓ 选择、Enter 恢复、Esc 取消）、`/save` 落盘
+
+## 共同特性
+
+- OpenAI 兼容的 Chat Completions 接口
+- 流式输出模型回复
+- 上下文只保存在当前进程内存中，每次运行在各自的 `chat_history/` 下生成存档
+- 模型可以调用本地工具（日期、闰年、文件操作等）
+
+## FYAgent 的不同
+
+| 方面 | Practice02 | FYAgent |
+|------|------------|------------|
+| 代码结构 | 单文件 `main.py` + `file_tools.py` | `core/`（业务）+ `tui/`（界面）分层 |
+| 界面 | 终端逐行打印 + 转圈动画 | Textual 全屏 TUI：消息卡片、工具卡片、配置页 |
+| 依赖方向 | — | 严格 `tui → core`，core 不依赖任何 UI 库 |
+| 装配方式 | 模块级全局 | `core/factory.py` 注入 backend / registry / 沙箱根 |
+| 测试 | 手工验证 | `tests/` 覆盖 core 与 TUI（pytest，无头模式，314 个用例，全程不联网） |
+| 工具 | 13 个 | 19 个内置：在旧版基础上增加 `searchWeb`（联网搜索）、`fetchWeb`（抓网页正文）、`RunCli`（本地命令行）、`loadSkill` / `createSkill`（技能加载与创建）、`recallContext`（回查上下文归档）；接入插件或 MCP Server 时再动态追加 |
+| 插件 | 无 | 仓库根 `plugins/` 目录：`FYPLUGIN.json` + `tools.py`，`register(api)` 即可加工具与提示片段；装载隔离、内置优先、可开关（FYAgent 新增） |
+| 技能 | 无 | Agent Skills：扫描技能目录、清单进 System Prompt、正文按需加载，还能让模型用 `createSkill` 现建 |
+| MCP | 无 | 读技能目录的 `.mcp.json`，把外部 MCP Server 的工具注册成普通函数工具 |
+| 上下文 | 只保留最近 N 轮，超限即丢 | 常驻占用条（token / 窗口 / 百分比）、70% 警告并暂停输入、`/compact` 归档到 `.agents/context/` 后摘要替换历史、`recallContext` 回查原始记录 |
+| 会话 | 仅内存，退出即散 | `.agents/sessions/*.jsonl` 事件日志：`/new` `/save` `/resume` `/sessions` `/export`，恢复时从事件重建上下文，压缩点之后从摘要重开 |
+| 配置 | 三行 `[llm]` | `config.ini` 九个段覆盖全部水位线（含 `[plugins]`、`[ui]`），`AppConfig` 提供默认值；缺文件时生成完整模板并提示重启 |
+| 项目约定 | 无 | 工作区 `AGENTS.md` 一次注入、原文写入会话日志、后续轮次复用同一段文本 |
+| 输入 | `input()` 单行 | 多行输入框：`Enter` 发送、`Ctrl+J` 换行，卡片式消息流；输入 `/` 弹出命令补全 |
+| 界面 | — | 三段边栏（MCP / 插件 / 技能）、`Ctrl+T` 切主题、`Ctrl+K` 折叠工具卡片、`Ctrl+B` 收起边栏、可选消息时间戳与顶栏时钟 |
+| 工作区 | 固定为项目目录 | `--workspace` 启动指定，`/workspace` 运行时切换（文件沙箱 + `RunCli` 目录） |
+| 启动目录 | 需在项目目录运行 | 路径锚定仓库根，**任意目录用绝对路径启动都能运行** |
+
+## 配置
+
+三个目录各自读取同目录下的 `config.ini`：
+
+```ini
+[llm]
+base_url = https://example.com/v1
+api_key = your-api-key
+model_name = your-model
+```
+
+Practice01 / Practice02 在配置缺失时用终端问答创建；FYAgent 缺少 `config.ini` 时先在同目录
+生成一份带注释的完整模板（mock 值），弹框提示改成真实值后重新启动，然后退出（也可手写该文件）。`config.ini`、`chat_history/` 与技能目录 `.agents/` 都属于本地
+运行数据，已在仓库根 `.gitignore` 中排除，不应提交。
+
+### FYAgent 的技能目录
+
+默认扫描 `<仓库根>/.agents/skills/`；想用别的目录（可以多个），加一段配置
+即可，不需要改代码：
+
+```ini
+[skills]
+; 分号/逗号分隔，支持 ~ 和 %环境变量%；相对路径按仓库根解析
+roots = D:\my-skills; D:\team-skills\.agents\skills
+```
+
+也可以用 `--skills-dir 路径`（可重复）或环境变量 `FY_SKILLS_DIRS="a;b"` 临时指定。
+多个根按顺序扫描，同名技能先扫到的生效；`/skills` 命令可查看扫描目录、已加载技能与
+跳过原因。
+
+## 依赖
+
+```powershell
+pip install openai textual trafilatura
+```
+
+`textual` 与 `trafilatura` 只有 FYAgent 需要（后者用于 `fetchWeb` 提取网页正文）；
+FYAgent 目录下也有 `requirements.txt` 可以一次装齐。

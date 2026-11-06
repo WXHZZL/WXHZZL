@@ -1,0 +1,8 @@
+{
+  "name": "example-tools",
+  "version": "1.0.0",
+  "description": "示例插件：环境体检与当前时间，演示 FYAgent 插件的最小写法",
+  "author": "WXHZZL",
+  "entry": "tools.py",
+  "enabled": true
+}

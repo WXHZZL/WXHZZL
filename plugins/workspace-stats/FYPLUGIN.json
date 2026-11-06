@@ -1,0 +1,8 @@
+{
+  "name": "workspace-stats",
+  "version": "1.0.0",
+  "description": "仓库体检：按语言统计文件数与代码行数，回答“这个项目长什么样”类问题",
+  "author": "WXHZZL",
+  "entry": "tools.py",
+  "enabled": true
+}

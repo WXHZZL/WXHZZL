@@ -1,0 +1,281 @@
+Screen {
+    background: $surface;
+}
+
+#chat {
+    height: 1fr;
+    padding: 1 2 0 2;
+    scrollbar-size-vertical: 1;
+}
+
+.message {
+    height: auto;
+    padding: 0 1;
+    margin: 0 0 1 0;
+}
+
+.message.user {
+    border-left: thick $warning;
+    background: $surface-lighten-1;
+}
+
+.message.assistant {
+    border-left: thick $primary;
+    background: $surface-lighten-1;
+}
+
+.message .role {
+    height: 1;
+    color: $text-muted;
+    text-style: bold;
+}
+
+.message.user .role {
+    color: $warning;
+}
+
+.message.assistant .role {
+    color: $primary;
+}
+
+.message Markdown {
+    height: auto;
+}
+
+.message Static {
+    height: auto;
+}
+
+.tool {
+    height: auto;
+    border-left: thick $success;
+    background: $surface-lighten-1;
+    padding: 0 1;
+    margin: 0 0 1 0;
+}
+
+.tool.failed {
+    border-left: thick $error;
+}
+
+.tool-header {
+    height: 1;
+}
+
+.tool-arrow {
+    width: 1;
+    color: $text-muted;
+}
+
+.tool-icon {
+    width: 2;
+    color: $success;
+}
+
+.tool.failed .tool-icon {
+    color: $error;
+}
+
+.tool-title {
+    width: 1fr;
+    color: $text;
+}
+
+.tool-time {
+    width: auto;
+    color: $text-muted;
+}
+
+.tool-body {
+    height: auto;
+}
+
+.tool-section {
+    height: 1;
+    color: $text-muted;
+    text-style: bold;
+}
+
+.tool-args,
+.tool-result {
+    height: auto;
+    color: $text;
+    padding-left: 1;
+}
+
+.tool.failed .tool-result {
+    color: $error;
+}
+
+.system {
+    color: $text-muted;
+    padding: 0 1;
+    margin: 0 0 1 0;
+}
+
+.system.error {
+    color: $error;
+}
+
+.system.warn {
+    color: $warning;
+}
+
+#commands {
+    display: none;
+    height: auto;
+    max-height: 12;
+    margin: 0 1;
+    background: $panel;
+    border: round $accent;
+}
+
+#context {
+    height: 1;
+    background: $panel;
+    color: $text-muted;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#context.warn {
+    color: $warning;
+}
+
+#context.danger {
+    color: $error;
+}
+
+#status {
+    height: 1;
+    background: $panel;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+#prompt {
+    margin: 0 1;
+    height: auto;
+    min-height: 1;
+    max-height: 8;
+    background: $surface;
+}
+
+#prompt:focus {
+    background: $surface-lighten-1;
+}
+
+ConfigScreen {
+    align: center middle;
+}
+
+.dialog {
+    width: 70;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+.dialog .title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.dialog .label {
+    margin: 1 0 0 0;
+    color: $text-muted;
+}
+
+.dialog .hint {
+    color: $text-muted;
+    margin: 0 0 1 0;
+}
+
+.dialog #form-error {
+    color: $error;
+    height: auto;
+    margin-top: 1;
+}
+
+/* 测试连接成功时用绿色显示同一条提示（FYAgent 新增） */
+.dialog #form-error.ok {
+    color: $success;
+}
+
+.dialog .buttons {
+    height: auto;
+    align-horizontal: right;
+    margin-top: 1;
+}
+
+.dialog Button {
+    margin-left: 1;
+}
+
+/* 主区域：左聊天、右边栏（MCP / 插件 / 技能三段） */
+#body {
+    height: 1fr;
+}
+
+#body #chat {
+    width: 1fr;
+}
+
+#sidebar {
+    width: 36;
+    height: 1fr;
+    border-left: round $panel;
+    background: $panel;
+    padding: 0 1;
+}
+
+#sidebar-title {
+    height: 1;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+.sidebar-section-title {
+    height: 1;
+    text-style: bold;
+    color: $accent;
+    margin-top: 1;
+}
+
+#mcp-sidebar-body,
+#plugin-sidebar-body,
+#skill-sidebar-body {
+    height: auto;
+    color: $text-muted;
+}
+
+SessionScreen {
+    align: center middle;
+}
+
+.session-dialog {
+    width: 84;
+}
+
+.session-dialog #session-list {
+    height: auto;
+    max-height: 16;
+    background: $surface;
+    border: round $panel;
+}
+
+.session-dialog #session-list > .option-list--option-highlighted {
+    background: $accent;
+    color: $text;
+}
+
+FirstRunScreen {
+    align: center middle;
+}
+
+.first-run-dialog {
+    width: 76;
+}
+

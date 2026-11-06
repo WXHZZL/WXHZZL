@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fy-agent"
+version = "0.1.0"
+description = "FYAgent：core / TUI 分层的本地工具调用 Agent（插件 + 技能 + MCP 三条扩展路径）"
+requires-python = ">=3.10"
+dependencies = ["openai>=1.0,<4", "mcp>=2.2,<3"]
+
+[project.optional-dependencies]
+tui = ["textual>=8.2,<9"]
+web = ["trafilatura>=2.0"]
+all = ["textual>=8.2,<9", "trafilatura>=2.0", "httpx>=0.27", "uvicorn>=0.30"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+fy = "tui.__main__:main"
+fyagent = "tui.__main__:main"
+
+[tool.setuptools]
+packages = ["core", "core.llm", "core.mcp", "core.tools", "tui", "tui.widgets", "tui.screens"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
